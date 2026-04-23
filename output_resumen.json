@@ -1,0 +1,74 @@
+[
+  {
+    "descProyecto":"AMARETTO",
+    "total_reuniones":8,
+    "reuniones_cumplen":4,
+    "cumplimiento_%":50.0
+  },
+  {
+    "descProyecto":"C DEL PARQUE TAYRONA APTOS",
+    "total_reuniones":6,
+    "reuniones_cumplen":6,
+    "cumplimiento_%":100.0
+  },
+  {
+    "descProyecto":"DIMARO",
+    "total_reuniones":10,
+    "reuniones_cumplen":8,
+    "cumplimiento_%":80.0
+  },
+  {
+    "descProyecto":"GENOVA",
+    "total_reuniones":5,
+    "reuniones_cumplen":4,
+    "cumplimiento_%":80.0
+  },
+  {
+    "descProyecto":"LOTE SEVILLA",
+    "total_reuniones":6,
+    "reuniones_cumplen":6,
+    "cumplimiento_%":100.0
+  },
+  {
+    "descProyecto":"PARKSIDE",
+    "total_reuniones":6,
+    "reuniones_cumplen":5,
+    "cumplimiento_%":83.3333333333
+  },
+  {
+    "descProyecto":"PUERTA DORADA ARRECIFE",
+    "total_reuniones":8,
+    "reuniones_cumplen":8,
+    "cumplimiento_%":100.0
+  },
+  {
+    "descProyecto":"PUERTA DORADA CRISTALINA",
+    "total_reuniones":9,
+    "reuniones_cumplen":7,
+    "cumplimiento_%":77.7777777778
+  },
+  {
+    "descProyecto":"PUERTA DORADA MARISMA",
+    "total_reuniones":8,
+    "reuniones_cumplen":8,
+    "cumplimiento_%":100.0
+  },
+  {
+    "descProyecto":"PUERTA DORADA NATURA",
+    "total_reuniones":8,
+    "reuniones_cumplen":7,
+    "cumplimiento_%":87.5
+  },
+  {
+    "descProyecto":"RIVERBAY",
+    "total_reuniones":8,
+    "reuniones_cumplen":7,
+    "cumplimiento_%":87.5
+  },
+  {
+    "descProyecto":"RIVERBLUE",
+    "total_reuniones":8,
+    "reuniones_cumplen":8,
+    "cumplimiento_%":100.0
+  }
+]
