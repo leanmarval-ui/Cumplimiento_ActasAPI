@@ -6,3 +6,5 @@ urllib3
 plotly
 openpyxl
 pytz
+kaleido
+reportlab

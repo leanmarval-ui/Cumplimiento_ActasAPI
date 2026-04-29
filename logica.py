@@ -29,14 +29,14 @@ def siguiente_habil(fecha, festivos):
     return siguiente
 
 # =========================
-# FIX FECHAS
+# FIX FECHAS (conserva hora para comparar correctamente)
 # =========================
 def convertir_fecha_correcta(col):
     return (
         pd.to_datetime(col, errors="coerce", utc=True)
         .dt.tz_convert("America/Bogota")
         .dt.tz_localize(None)
-        .dt.normalize()
+        # ✅ SIN .dt.normalize() — conserva la hora
     )
 
 # =========================
@@ -59,12 +59,15 @@ def calcular_posibles(dia_base, fechas_mes, festivos, mes):
                 siguiente = siguiente_habil(fecha, festivos)
                 if siguiente.month == mes:
                     posibles.append(siguiente)
+                    # ✅ agrega también la holgura del día rodado
+                    siguiente_2 = siguiente_habil(siguiente, festivos)
+                    if siguiente_2.month == mes:
+                        posibles.append(siguiente_2)
             else:
                 posibles.append(fecha)
-
-            siguiente = siguiente_habil(fecha, festivos)
-            if siguiente.month == mes:
-                posibles.append(siguiente)
+                siguiente = siguiente_habil(fecha, festivos)
+                if siguiente.month == mes:
+                    posibles.append(siguiente)
 
     posibles = sorted(set(posibles))
     return ", ".join([f.strftime("%Y-%m-%d") for f in posibles])
@@ -93,19 +96,15 @@ def contar_fechas(valor):
     return len([x for x in str(valor).split(",") if x.strip() != ""])
 
 # =========================
-# COINCIDENCIAS
+# COINCIDENCIAS (con hora)
 # =========================
-def coincidencias_por_semana(lista_teorica, lista_real):
-    if pd.isna(lista_teorica) or pd.isna(lista_real):
+def coincidencias_por_semana(lista_teorica, lista_real_str, reales_con_hora):
+    if pd.isna(lista_teorica) or pd.isna(lista_real_str):
         return ""
 
     teoricas = sorted(set(
         pd.to_datetime(x.strip()).normalize()
         for x in str(lista_teorica).split(",") if x.strip()
-    ))
-    reales = sorted(set(
-        pd.to_datetime(x.strip()).normalize()
-        for x in str(lista_real).split(",") if x.strip()
     ))
 
     coincidencias = []
@@ -117,17 +116,20 @@ def coincidencias_por_semana(lista_teorica, lista_real):
         except IndexError:
             fin = inicio
 
-        holgura = fin + timedelta(days=1)
-        match = None
+        # ✅ Ventana: desde inicio 00:00 hasta fin 23:59:59
+        ventana_inicio = inicio
+        ventana_fin    = fin + timedelta(hours=23, minutes=59, seconds=59)
 
-        for r in reales:
-            if r.weekday() == 6:
+        match = None
+        for r in reales_con_hora:
+            r_norm = pd.to_datetime(r)
+            if r_norm.weekday() == 6:
                 continue
-            if inicio <= r <= holgura:
-                match = r
+            if ventana_inicio <= r_norm <= ventana_fin:
+                match = r_norm.normalize()
                 break
 
-        if match:
+        if match is not None:
             coincidencias.append(match)
 
     return ", ".join([f.strftime("%Y-%m-%d") for f in coincidencias])
@@ -157,7 +159,7 @@ def procesar_todo(df_proyectos, df_intermedia, df_semanal, fechas_mes, anio, mes
     df_proyectos["ConteoIntermedia"] = df_proyectos["PosibleIntermedia"].apply(contar_eventos_teoricos)
     df_proyectos["ConteoSemanal"]    = df_proyectos["PosibleSemanal"].apply(contar_eventos_teoricos)
 
-    # FECHAS REALES
+    # FECHAS REALES — conserva hora
     col_fecha_intermedia = "fechaFin"
     col_fecha_semanal    = "fechaFin"
 
@@ -176,26 +178,44 @@ def procesar_todo(df_proyectos, df_intermedia, df_semanal, fechas_mes, anio, mes
     df_intermedia = df_intermedia.drop_duplicates(subset=["Proyecto", col_fecha_intermedia])
     df_semanal    = df_semanal.drop_duplicates(subset=["Proyecto", col_fecha_semanal])
 
+    # AGRUPAR fechas para mostrar en tabla (solo fecha, sin hora)
     df_intermedia_group = df_intermedia.groupby("Proyecto")[col_fecha_intermedia].apply(
-        lambda x: ", ".join(sorted(set(x.dt.strftime("%Y-%m-%d"))))
+        lambda x: ", ".join(sorted(set(x.dt.normalize().dt.strftime("%Y-%m-%d"))))
     ).reset_index()
     df_semanal_group = df_semanal.groupby("Proyecto")[col_fecha_semanal].apply(
-        lambda x: ", ".join(sorted(set(x.dt.strftime("%Y-%m-%d"))))
+        lambda x: ", ".join(sorted(set(x.dt.normalize().dt.strftime("%Y-%m-%d"))))
     ).reset_index()
 
     df_intermedia_group.rename(columns={col_fecha_intermedia: "RealIntermedia"}, inplace=True)
     df_semanal_group.rename(columns={col_fecha_semanal:       "RealSemanal"},    inplace=True)
 
+    # AGRUPAR fechas CON hora para comparar coincidencias
+    df_intermedia_hora = df_intermedia.groupby("Proyecto")[col_fecha_intermedia].apply(list).reset_index()
+    df_semanal_hora    = df_semanal.groupby("Proyecto")[col_fecha_semanal].apply(list).reset_index()
+
+    df_intermedia_hora.rename(columns={col_fecha_intermedia: "RealIntermedaHora"}, inplace=True)
+    df_semanal_hora.rename(columns={col_fecha_semanal:       "RealSemanalHora"},   inplace=True)
+
     # MERGE
     df_detallado = df_proyectos.merge(df_intermedia_group, on="Proyecto", how="left")
     df_detallado = df_detallado.merge(df_semanal_group,    on="Proyecto", how="left")
+    df_detallado = df_detallado.merge(df_intermedia_hora,  on="Proyecto", how="left")
+    df_detallado = df_detallado.merge(df_semanal_hora,     on="Proyecto", how="left")
 
-    # COINCIDENCIAS
+    # COINCIDENCIAS con hora
     df_detallado["CoincidenciasIntermedia"] = df_detallado.apply(
-        lambda row: coincidencias_por_semana(row["PosibleIntermedia"], row["RealIntermedia"]), axis=1
+        lambda row: coincidencias_por_semana(
+            row["PosibleIntermedia"],
+            row["RealIntermedia"],
+            row["RealIntermedaHora"] if isinstance(row["RealIntermedaHora"], list) else []
+        ), axis=1
     )
     df_detallado["CoincidenciasSemanal"] = df_detallado.apply(
-        lambda row: coincidencias_por_semana(row["PosibleSemanal"], row["RealSemanal"]), axis=1
+        lambda row: coincidencias_por_semana(
+            row["PosibleSemanal"],
+            row["RealSemanal"],
+            row["RealSemanalHora"] if isinstance(row["RealSemanalHora"], list) else []
+        ), axis=1
     )
 
     df_detallado["ConteoCoincidenciasIntermedia"] = df_detallado["CoincidenciasIntermedia"].apply(contar_fechas)

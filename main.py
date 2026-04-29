@@ -26,7 +26,7 @@ headers = {
 }
 
 cookies = {
-    "connect.sid": "s:Dhe-tJyoJPjNwJtay2T2pT7lzyggWt9O.KXDlp3hA4snKFLA+QROZ9WKZdohnXXiRhSpPtcArba8"
+    "connect.sid": "s:qeKhCNUtAD383evo8WQxLvvF1NcWvUwe.XxnvOE%2BPK+STntrtWLWVU9b7rzGlyGEHL4Ju6xFUxVw"
 }
 
 payload = {"idSucursal": 3}

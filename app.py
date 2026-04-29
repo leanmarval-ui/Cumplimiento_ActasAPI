@@ -272,3 +272,78 @@ fig.update_layout(
 )
 
 st.plotly_chart(fig, use_container_width=True)
+
+# =========================
+# DESCARGA PDF
+# =========================
+import io
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.lib import colors
+from reportlab.lib.units import cm
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Spacer, Image, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+
+def generar_pdf(df_tabla, fig, sucursal, mes, anio):
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=1*cm,
+        leftMargin=1*cm,
+        topMargin=1*cm,
+        bottomMargin=1*cm
+    )
+
+    elementos = []
+    styles = getSampleStyleSheet()
+
+    # TITULO
+    titulo = Paragraph(
+        f"<b>Dashboard Cumplimiento Actas - {sucursal.capitalize()} | Mes {mes} / {anio}</b>",
+        styles["Title"]
+    )
+    elementos.append(titulo)
+    elementos.append(Spacer(1, 0.5*cm))
+
+    # GRAFICA
+    img_bytes = fig.to_image(format="png", width=1000, height=max(400, len(df_grafico) * 40))
+    img_buffer = io.BytesIO(img_bytes)
+    img = Image(img_buffer, width=25*cm, height=max(8*cm, len(df_grafico) * 0.8*cm))
+    elementos.append(img)
+    elementos.append(Spacer(1, 0.5*cm))
+
+    # TABLA
+    columnas = list(df_tabla.columns)
+    datos = [columnas]
+    for _, row in df_tabla.iterrows():
+        datos.append([str(row[c]) for c in columnas])
+
+    tabla_pdf = Table(datos, repeatRows=1)
+    tabla_pdf.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#2C3E50")),
+        ("TEXTCOLOR",  (0, 0), (-1, 0), colors.white),
+        ("FONTNAME",   (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE",   (0, 0), (-1, 0), 8),
+        ("FONTSIZE",   (0, 1), (-1, -1), 7),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#F2F2F2")]),
+        ("GRID",       (0, 0), (-1, -1), 0.3, colors.grey),
+        ("ALIGN",      (0, 0), (-1, -1), "CENTER"),
+        ("VALIGN",     (0, 0), (-1, -1), "MIDDLE"),
+        ("PADDING",    (0, 0), (-1, -1), 4),
+    ]))
+    elementos.append(tabla_pdf)
+
+    doc.build(elementos)
+    buffer.seek(0)
+    return buffer
+
+# BOTON DESCARGA
+if st.button("📥 Descargar PDF"):
+    with st.spinner("Generando PDF..."):
+        pdf_buffer = generar_pdf(df_tabla, fig, sucursal, int(MES), int(ANIO))
+        st.download_button(
+            label="⬇️ Haz clic aquí para descargar",
+            data=pdf_buffer,
+            file_name=f"cumplimiento_{sucursal}_{int(ANIO)}_{int(MES):02d}.pdf",
+            mime="application/pdf"
+        )
